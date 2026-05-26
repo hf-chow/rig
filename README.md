@@ -83,3 +83,4 @@ rig down
 
 - Rust (tokio, reqwest, clap v4, serde, anyhow)
 - [Vast.ai](https://vast.ai) API
+# idle
