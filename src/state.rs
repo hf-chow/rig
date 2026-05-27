@@ -40,7 +40,7 @@ impl State {
             .with_context(|| format!("failed to read state at {}", path.display()))?;
 
         let state = serde_json::from_str(&contents)
-            .with_context(|| format!("failed to parse satate at {}", path.display()))?;
+            .with_context(|| format!("failed to parse state at {}", path.display()))?;
 
         Ok(Some(state))
     }
@@ -105,6 +105,8 @@ mod tests {
         assert_eq!(state.instance_id, 1);
         assert_eq!(state.created_at, 2);
         assert_eq!(state.ip, Some("1.2.3.4".to_string()));
+        assert_eq!(state.ssh_host, Some("host".to_string()));
+        assert_eq!(state.ssh_port, Some(22 as u16));
 
         State::clear_at(tmp_path).unwrap();
     }
