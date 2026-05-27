@@ -92,6 +92,8 @@ mod tests {
             instance_id: 1,
             created_at: 2,
             ip: Some("1.2.3.4".to_string()),
+            ssh_host: Some("host".to_string()),
+            ssh_port: Some(22 as u16),
         };
 
         test_state.save_to(tmp_path).unwrap();
