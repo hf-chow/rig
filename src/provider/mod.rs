@@ -1,3 +1,20 @@
+use anyhow::Result;
+use async_trait::async_trait;
+
+#[async_trait]
+pub trait GpuProvider {
+    fn name(&self) -> &str;
+
+    async fn list_offers(&self, criteria: &SearchCriteria) -> Result<Vec<NormalizedOffer>>;
+
+    async fn create_instance(&self, offer: &NormalizedOffer, spec: &InstanceSpec)
+    -> Result<String>;
+
+    async fn get_instance(&self, id: &str) -> Result<Option<NormalizedInstance>>;
+
+    async fn destroy_instance(&self, id: &str) -> Result<()>;
+}
+
 #[derive(Debug, Clone)]
 pub struct SearchCriteria {
     pub min_vram_gb: u32,
