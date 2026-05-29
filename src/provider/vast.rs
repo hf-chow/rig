@@ -205,3 +205,33 @@ impl VastClient {
         }
     }
 }
+
+impl GpuProvider for VastClient {
+    fn name(&self) -> &str {
+        "vastai"
+    }
+
+    async fn list_offers(&self, criteria: SearchCriteria) -> Result<Vec<NormalizedOffer>> {
+        let query = serde_json::json!({
+            "gpu_ram":{"gte": criteria.min_vram_gb * 1024},
+            "dph_total":{"lte": criteria.max_price},
+            "rentable": {"eq": true},
+            "num_gpus":{"eq": criteria.num_gpus},
+        });
+        let resp = self
+            .client
+            .get("https://console.vast.ai/api/v0/bundles/")
+            .query(&[("api_key", &self.api_key), ("q", &query.to_string())])
+            .send()
+            .await?;
+
+        let offer_resp: OfferResponse = resp.json().await?;
+        let mut offers = offer_resp.offers;
+        offers.sort_by(|a, b| {
+            a.dph_total
+                .partial_cmp(&b.dph_total)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        Ok(offers.into_iter().map(map_offer).collect())
+    }
+}
