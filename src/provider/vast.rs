@@ -56,12 +56,17 @@ pub struct CreateInstanceResponse {
 pub struct VastClient {
     api_key: String,
     client: reqwest::Client,
+    ssh_key_ids: Vec<u64>,
 }
 
 impl VastClient {
-    pub fn new(api_key: String) -> Self {
+    pub fn new(api_key: String, ssh_key_ids: Vec<u64>) -> Self {
         let client = reqwest::Client::new();
-        Self { api_key, client }
+        Self {
+            api_key,
+            client,
+            ssh_key_ids,
+        }
     }
 
     pub async fn list_offers(&self, min_vram_gb: u32, max_price: f64) -> Result<Vec<Offer>> {
@@ -163,5 +168,40 @@ impl VastClient {
             }
         }
         Ok(())
+    }
+
+    fn map_offer(o: vast::Offer) -> NormalizedOffer {
+        NormalizedOffer {
+            provider: "vastai",
+            provider_ref: o.id.to_string(),
+            gpu_name: o.gpu_name.unwrap_or("unknown"),
+            num_gpu: o.num_gpus,
+            vram_gb: (o.gpu_ram / 1024) as u32,
+            price_per_hour: o.search.total_hour,
+            location: Some(o.geolocation),
+            reliability: Some(o.reliability),
+        }
+    }
+
+    fn map_instance(i: vast::Instance) -> NormalizedInstance {
+        NormalizedInstance {
+            id: i.id.to_string(),
+            provider: "vastai",
+            gpu_name: i.gpu_name,
+            price_per_hour: i.search.map(|s| s.total_hour).unwrap_or(i.dph_total),
+            status: map_status(i.actual_status),
+            public_ip: i.public_ipaddr,
+            ssh_host: i.ssh_host,
+            ssh_port: i.ssh_port,
+        }
+    }
+
+    fn map_status(s: Option<String>) -> InstanceStatus {
+        match s.as_deref() {
+            Some("running") => Running,
+            Some("loading" | "created") => Pending,
+            Some("other") => Unknown(other.to_string()),
+            None => Unknown("none"),
+        }
     }
 }

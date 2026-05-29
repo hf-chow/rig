@@ -93,7 +93,7 @@ mod tests {
             created_at: 2,
             ip: Some("1.2.3.4".to_string()),
             ssh_host: Some("host".to_string()),
-            ssh_port: Some(22 as u16),
+            ssh_port: Some(22),
         };
 
         test_state.save_to(tmp_path).unwrap();
@@ -106,7 +106,7 @@ mod tests {
         assert_eq!(state.created_at, 2);
         assert_eq!(state.ip, Some("1.2.3.4".to_string()));
         assert_eq!(state.ssh_host, Some("host".to_string()));
-        assert_eq!(state.ssh_port, Some(22 as u16));
+        assert_eq!(state.ssh_port, Some(22));
 
         State::clear_at(tmp_path).unwrap();
     }

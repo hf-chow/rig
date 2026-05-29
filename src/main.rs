@@ -6,6 +6,7 @@ use crate::vast_client::VastClient;
 
 mod commands;
 mod config;
+mod provider;
 mod state;
 mod vast_client;
 
