@@ -1,6 +1,8 @@
 use anyhow::Result;
 use async_trait::async_trait;
 
+mod vast;
+
 #[async_trait]
 pub trait GpuProvider {
     fn name(&self) -> &str;

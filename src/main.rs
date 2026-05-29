@@ -2,13 +2,12 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 use crate::config::Config;
-use crate::vast_client::VastClient;
+use crate::provider::vast::VastClient;
 
 mod commands;
 mod config;
 mod provider;
 mod state;
-mod vast_client;
 
 #[derive(Subcommand, Clone)]
 enum Command {
