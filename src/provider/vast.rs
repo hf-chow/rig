@@ -1,4 +1,6 @@
+use super::*;
 use anyhow::Result;
+use async_trait::async_trait;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -169,40 +171,40 @@ impl VastClient {
         }
         Ok(())
     }
+}
 
-    fn map_offer(o: vast::Offer) -> NormalizedOffer {
-        NormalizedOffer {
-            provider: "vastai",
-            provider_ref: o.id.to_string(),
-            gpu_name: o.gpu_name.unwrap_or("unknown"),
-            num_gpu: o.num_gpus,
-            vram_gb: (o.gpu_ram / 1024) as u32,
-            price_per_hour: o.search.total_hour,
-            location: Some(o.geolocation),
-            reliability: Some(o.reliability),
-        }
+fn map_offer(o: Offer) -> NormalizedOffer {
+    NormalizedOffer {
+        provider: "vastai".to_string(),
+        provider_ref: o.id.to_string(),
+        gpu_name: o.gpu_name.unwrap_or("unknown".to_string()),
+        num_gpus: o.num_gpus,
+        vram_gb: (o.gpu_ram / 1024) as u32,
+        price_per_hour: o.search.total_hour,
+        location: Some(o.geolocation),
+        reliability: Some(o.reliability),
     }
+}
 
-    fn map_instance(i: vast::Instance) -> NormalizedInstance {
-        NormalizedInstance {
-            id: i.id.to_string(),
-            provider: "vastai",
-            gpu_name: i.gpu_name,
-            price_per_hour: i.search.map(|s| s.total_hour).unwrap_or(i.dph_total),
-            status: map_status(i.actual_status),
-            public_ip: i.public_ipaddr,
-            ssh_host: i.ssh_host,
-            ssh_port: i.ssh_port,
-        }
+fn map_instance(i: vast::Instance) -> NormalizedInstance {
+    NormalizedInstance {
+        id: i.id.to_string(),
+        provider: "vastai".to_string(),
+        gpu_name: i.gpu_name,
+        price_per_hour: i.search.map(|s| s.total_hour).unwrap_or(i.dph_total),
+        status: map_status(i.actual_status),
+        public_ip: i.public_ipaddr,
+        ssh_host: i.ssh_host,
+        ssh_port: i.ssh_port,
     }
+}
 
-    fn map_status(s: Option<String>) -> InstanceStatus {
-        match s.as_deref() {
-            Some("running") => Running,
-            Some("loading" | "created") => Pending,
-            Some("other") => Unknown(other.to_string()),
-            None => Unknown("none"),
-        }
+fn map_status(s: Option<String>) -> InstanceStatus {
+    match s.as_deref() {
+        Some("running") => InstanceStatus::Running,
+        Some("loading" | "created") => InstanceStatus::Pending,
+        Some(other) => InstanceStatus::Unknown(other.to_string()),
+        None => InstanceStatus::Unknown("none".to_string()),
     }
 }
 
