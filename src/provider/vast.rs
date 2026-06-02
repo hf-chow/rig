@@ -70,107 +70,6 @@ impl VastClient {
             ssh_key_ids,
         }
     }
-
-    pub async fn list_offers(&self, min_vram_gb: u32, max_price: f64) -> Result<Vec<Offer>> {
-        let query = serde_json::json!({
-            "gpu_ram":{"gte": min_vram_gb * 1024},
-            "dph_total":{"lte": max_price},
-            "rentable": {"eq": true},
-            "num_gpus":{"eq":1}
-        });
-        let resp = self
-            .client
-            .get("https://console.vast.ai/api/v0/bundles/")
-            .query(&[("api_key", &self.api_key), ("q", &query.to_string())])
-            .send()
-            .await?;
-
-        let offer_resp: OfferResponse = resp.json().await?;
-        let mut offers = offer_resp.offers;
-        offers.sort_by(|a, b| {
-            a.dph_total
-                .partial_cmp(&b.dph_total)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-        Ok(offers)
-    }
-
-    pub async fn get_instance(&self, id: u64) -> Result<Option<Instance>> {
-        let resp = self
-            .client
-            .get(format!("https://console.vast.ai/api/v0/instances/{}/", id))
-            .query(&[("api_key", &self.api_key), ("owner", &"me".to_string())])
-            .send()
-            .await?;
-
-        let text = resp.text().await?;
-        let instance_resp: InstanceResponse = serde_json::from_str(&text)?;
-        let instances: Vec<Instance> = match instance_resp.instances {
-            None => vec![],
-            Some(serde_json::Value::Array(arr)) => {
-                serde_json::from_value(serde_json::Value::Array(arr))?
-            }
-            Some(obj @ serde_json::Value::Object(_)) => {
-                vec![serde_json::from_value(obj)?]
-            }
-            _ => vec![],
-        };
-
-        Ok(instances.into_iter().find(|i| i.id == id))
-    }
-
-    pub async fn create_instance(
-        &self,
-        offer_id: u64,
-        image: &str,
-        disk_gb: f64,
-        ssh_key_ids: &[u64],
-    ) -> Result<u64> {
-        let body = serde_json::json!({
-            "client_id": "me",
-            "image": image,
-            "disk": disk_gb,
-            "id": offer_id,
-            "ssh_key_ids": ssh_key_ids,
-        });
-        let resp = self
-            .client
-            .put(format!("https://console.vast.ai/api/v0/asks/{}/", offer_id))
-            .query(&[("api_key", &self.api_key)])
-            .json(&body)
-            .send()
-            .await?;
-        let create_resp: CreateInstanceResponse = resp.json().await?;
-        if create_resp.success != Some(true) {
-            anyhow::bail!(
-                "failed to create instance: {}",
-                create_resp.msg.unwrap_or_default()
-            )
-        }
-        let new_contract = create_resp
-            .new_contract
-            .ok_or_else(|| anyhow::anyhow!("no contract id in response"))?;
-        Ok(new_contract)
-    }
-
-    pub async fn destroy_instance(&self, id: u64) -> Result<()> {
-        let resp = self
-            .client
-            .delete(format!("https://console.vast.ai/api/v0/instances/{}/", id))
-            .query(&[("api_key", &self.api_key)])
-            .send()
-            .await?;
-        let delete_resp: CreateInstanceResponse = resp.json().await?;
-        if delete_resp.success != Some(true) {
-            if delete_resp.error.as_deref() != Some("no_such_instance") {
-                anyhow::bail!(
-                    "failed to destroy instance: {}",
-                    delete_resp.msg.unwrap_or_default()
-                )
-            }
-        }
-        Ok(())
-    }
 }
 
 fn map_offer(o: Offer) -> NormalizedOffer {
@@ -208,15 +107,16 @@ fn map_status(s: Option<String>) -> InstanceStatus {
     }
 }
 
+#[async_trait]
 impl GpuProvider for VastClient {
     fn name(&self) -> &str {
         "vastai"
     }
 
-    async fn list_offers(&self, criteria: SearchCriteria) -> Result<Vec<NormalizedOffer>> {
+    async fn list_offers(&self, criteria: &SearchCriteria) -> Result<Vec<NormalizedOffer>> {
         let query = serde_json::json!({
             "gpu_ram":{"gte": criteria.min_vram_gb * 1024},
-            "dph_total":{"lte": criteria.max_price},
+            "dph_total":{"lte": criteria.max_price_per_hour},
             "rentable": {"eq": true},
             "num_gpus":{"eq": criteria.num_gpus},
         });
@@ -235,5 +135,83 @@ impl GpuProvider for VastClient {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
         Ok(offers.into_iter().map(map_offer).collect())
+    }
+
+    async fn get_instance(&self, id: &str) -> Result<Option<NormalizedInstance>> {
+        let id: u64 = id.parse()?;
+        let resp = self
+            .client
+            .get(format!("https://console.vast.ai/api/v0/instances/{}/", id))
+            .query(&[("api_key", &self.api_key), ("owner", &"me".to_string())])
+            .send()
+            .await?;
+
+        let text = resp.text().await?;
+        let instance_resp: InstanceResponse = serde_json::from_str(&text)?;
+        let instances: Vec<Instance> = match instance_resp.instances {
+            None => vec![],
+            Some(serde_json::Value::Array(arr)) => {
+                serde_json::from_value(serde_json::Value::Array(arr))?
+            }
+            Some(obj @ serde_json::Value::Object(_)) => {
+                vec![serde_json::from_value(obj)?]
+            }
+            _ => vec![],
+        };
+
+        Ok(instances.into_iter().find(|i| i.id == id).map(map_instance))
+    }
+
+    async fn create_instance(
+        &self,
+        offer: &NormalizedOffer,
+        spec: &InstanceSpec,
+    ) -> Result<String> {
+        let offer_id: u64 = offer.provider_ref.parse()?;
+        let body = serde_json::json!({
+            "client_id": "me",
+            "image": spec.image,
+            "disk": spec.disk_gb,
+            "id": offer_id,
+            "ssh_key_ids": self.ssh_key_ids,
+        });
+        let resp = self
+            .client
+            .put(format!("https://console.vast.ai/api/v0/asks/{}/", offer_id))
+            .query(&[("api_key", &self.api_key)])
+            .json(&body)
+            .send()
+            .await?;
+        let create_resp: CreateInstanceResponse = resp.json().await?;
+        if create_resp.success != Some(true) {
+            anyhow::bail!(
+                "failed to create instance: {}",
+                create_resp.msg.unwrap_or_default()
+            )
+        }
+        let new_contract = create_resp
+            .new_contract
+            .ok_or_else(|| anyhow::anyhow!("no contract id in response"))?;
+        Ok(new_contract.to_string())
+    }
+
+    async fn destroy_instance(&self, id: &str) -> Result<()> {
+        let id: u64 = id.parse()?;
+        let resp = self
+            .client
+            .delete(format!("https://console.vast.ai/api/v0/instances/{}/", id))
+            .query(&[("api_key", &self.api_key)])
+            .send()
+            .await?;
+        let delete_resp: CreateInstanceResponse = resp.json().await?;
+        if delete_resp.success != Some(true) {
+            if delete_resp.error.as_deref() != Some("no_such_instance") {
+                anyhow::bail!(
+                    "failed to destroy instance: {}",
+                    delete_resp.msg.unwrap_or_default()
+                )
+            }
+        }
+        Ok(())
     }
 }
