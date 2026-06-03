@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 #[derive(Deserialize, Serialize)]
 pub struct State {
-    pub instance_id: u64,
+    pub instance_id: String,
     pub created_at: u64,
     pub ip: Option<String>,
     pub ssh_host: Option<String>,
