@@ -27,7 +27,8 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     let config = Config::load()?;
     let token = config.token()?;
-    let client = provider::vast::VastClient::new(token, config.ssh_key_id.unwrap_or_default());
+    let client =
+        provider::vast::VastClient::new(token, config.ssh_key_id.clone().unwrap_or_default());
     match cli.command {
         Command::Status => commands::status::run(&client).await?,
         Command::Up => commands::up::run(&client, &config).await?,
