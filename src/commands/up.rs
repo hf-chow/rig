@@ -1,12 +1,11 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::config::Config;
-use crate::provider::vast::VastClient;
 use crate::provider::{GpuProvider, InstanceSpec, InstanceStatus, SearchCriteria};
 use crate::state::State;
 use anyhow::Result;
 
-pub async fn run(client: &VastClient, config: &Config) -> Result<()> {
+pub async fn run(client: &dyn GpuProvider, config: &Config) -> Result<()> {
     if let Some(state) = State::load()? {
         match client.get_instance(&state.instance_id).await? {
             Some(instance) if matches!(instance.status, InstanceStatus::Running) => {

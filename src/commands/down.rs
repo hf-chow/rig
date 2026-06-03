@@ -1,12 +1,11 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::provider::GpuProvider;
-use crate::provider::vast::VastClient;
 
 use crate::state::State;
 use anyhow::Result;
 
-pub async fn run(client: &VastClient) -> Result<()> {
+pub async fn run(client: &GpuProvider) -> Result<()> {
     let state = match State::load()? {
         None => {
             println!("no instance managed");
