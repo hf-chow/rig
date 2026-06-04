@@ -8,10 +8,11 @@ pub struct Config {
     pub disk_gb: Option<f64>,
     pub max_price_per_hour: Option<f64>,
     pub min_vram_gb: Option<u32>,
+    #[serde(default)]
     pub providers: Providers,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 pub struct Providers {
     pub vastai: Option<VastConfig>,
 }
