@@ -1,7 +1,10 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-use crate::config::Config;
+use crate::{
+    config::Config,
+    provider::{GpuProvider, vast::VastClient},
+};
 
 mod commands;
 mod config;
@@ -27,11 +30,10 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     let config = Config::load()?;
     let token = config.token()?;
-    let client =
-        provider::vast::VastClient::new(token, config.ssh_key_id.clone().unwrap_or_default());
+    let client: Box<dyn GpuProvider> = Box::new(VastClient::new(token, config.ssh_key_id.unwrap()));
     match cli.command {
-        Command::Status => commands::status::run(&client).await?,
-        Command::Up => commands::up::run(&client, &config).await?,
+        Command::Status => commands::status::run(&*client).await?,
+        Command::Up => commands::up::run(&*client, &config).await?,
         Command::Down => commands::down::run(&client).await?,
         Command::Ssh => commands::ssh::run().await?,
     };
