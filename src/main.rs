@@ -29,10 +29,11 @@ pub struct Cli {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     let config = Config::load()?;
-    let token = config.token()?;
+    let vast_cfg = config.providers.vastai.clone().unwrap_or_default();
+    let token = vast_cfg.resolve_token()?;
     let client: Box<dyn GpuProvider> = Box::new(VastClient::new(
         token,
-        config.ssh_key_id.clone().unwrap_or_default(),
+        vast_cfg.ssh_key_id.unwrap_or_default(),
     ));
     match cli.command {
         Command::Status => commands::status::run(&*client).await?,

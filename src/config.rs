@@ -4,23 +4,37 @@ use std::path::PathBuf;
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
-    pub token: Option<String>,
     pub image: Option<String>,
     pub disk_gb: Option<f64>,
     pub max_price_per_hour: Option<f64>,
     pub min_vram_gb: Option<u32>,
+    pub providers: Providers,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Providers {
+    pub vastai: Option<VastConfig>,
+}
+
+#[derive(Clone, Default, Deserialize, Serialize)]
+pub struct VastConfig {
+    pub api_key: Option<String>,
     pub ssh_key_id: Option<Vec<u64>>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            token: None,
             image: Some("pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime".to_string()),
             disk_gb: Some(10.0),
             max_price_per_hour: Some(0.05),
             min_vram_gb: Some(8),
-            ssh_key_id: None,
+            providers: Providers {
+                vastai: Some(VastConfig {
+                    api_key: None,
+                    ssh_key_id: None,
+                }),
+            },
         }
     }
 }
@@ -39,12 +53,14 @@ impl Config {
         toml::from_str(&contents)
             .with_context(|| format!("failed to parse config at {}", path.display()))
     }
+}
 
-    pub fn token(&self) -> Result<String> {
+impl VastConfig {
+    pub fn resolve_token(&self) -> Result<String> {
         if let Ok(token) = std::env::var("VASTAI_API_KEY") {
             return Ok(token);
         }
-        self.token.clone().ok_or_else(|| anyhow::anyhow!("no Vast.ai API key found. Set VASTAI_API_KEY or add token to ~/.config/rig/config.toml"))
+        self.api_key.clone().ok_or_else(|| anyhow::anyhow!("no Vast.ai API key found. Set VASTAI_API_KEY or add token to ~/.config/rig/config.toml"))
     }
 }
 
