@@ -5,7 +5,7 @@ use crate::provider::GpuProvider;
 use crate::state::State;
 use anyhow::Result;
 
-pub async fn run(client: &GpuProvider) -> Result<()> {
+pub async fn run(client: &dyn GpuProvider) -> Result<()> {
     let state = match State::load()? {
         None => {
             println!("no instance managed");
