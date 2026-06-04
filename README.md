@@ -43,23 +43,36 @@ mkdir -p ~/.config/rig
 Create `~/.config/rig/config.toml`:
 
 ```toml
-ssh_key_id = [12345]          # your Vast.ai SSH key ID (required for rig ssh)
+# Global search preferences (shared across providers)
 min_vram_gb = 24              # minimum VRAM in GB
 max_price_per_hour = 0.50     # budget cap in USD/hr
 image = "pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime"
+
+# Per-provider settings
+[providers.vastai]
+ssh_key_id = [12345]          # your Vast.ai SSH key ID (required for rig ssh)
+api_key = "..."               # optional; prefer the VASTAI_API_KEY env var
 ```
 
 ## Config reference
 
-| Field               | Default                                        | Description                        |
-|---------------------|------------------------------------------------|------------------------------------|
-| `ssh_key_id`        | —                                              | Vast.ai SSH key IDs (array of ints) |
-| `min_vram_gb`       | `8`                                            | Minimum GPU VRAM in GB             |
-| `max_price_per_hour`| `0.05`                                         | Max all-in price in USD/hr         |
-| `image`             | `pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime`| Docker image for the instance      |
-| `token`             | —                                              | API key (prefer `VASTAI_API_KEY`)  |
+Global preferences (top level), shared by all providers:
 
-The `VASTAI_API_KEY` environment variable takes precedence over `token` in the config file.
+| Field               | Default                                        | Description                  |
+|---------------------|------------------------------------------------|------------------------------|
+| `min_vram_gb`       | `8`                                            | Minimum GPU VRAM in GB       |
+| `max_price_per_hour`| `0.05`                                         | Max all-in price in USD/hr   |
+| `image`             | `pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime`| Docker image for the instance|
+| `disk_gb`           | `10`                                           | Disk size in GB              |
+
+Vast.ai provider settings, under `[providers.vastai]`:
+
+| Field         | Default | Description                              |
+|---------------|---------|------------------------------------------|
+| `ssh_key_id`  | —       | Vast.ai SSH key IDs (array of ints)      |
+| `api_key`     | —       | API key (prefer the `VASTAI_API_KEY` env var) |
+
+The `VASTAI_API_KEY` environment variable takes precedence over `api_key` in the config file.
 
 ## Usage
 
