@@ -1,6 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 
+pub mod runpod;
 pub mod vast;
 
 #[async_trait]
