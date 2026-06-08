@@ -8,6 +8,20 @@ struct RunPodClient {
     client: reqwest::Client,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GpuType {
+    id: String,
+    display_name: String,
+    memory_in_gb: u32,
+    lowest_price: Option<LowestPrice>,
+}
+
+#[derive(Deserialize)]
+struct LowestPrice {
+    minimum_bid_price: Option<f64>,
+}
+
 impl RunPodClient {
     pub fn new(api_key: String) -> Self {
         let client = reqwest::Client::new();
