@@ -17,6 +17,10 @@ struct GpuType {
     lowest_price: Option<LowestPrice>,
 }
 
+struct GpuTypesData {
+    gpu_types: Vec<GpuType>,
+}
+
 #[derive(Deserialize)]
 struct LowestPrice {
     minimum_bid_price: Option<f64>,
