@@ -55,6 +55,13 @@ impl RunPodClient {
         }
         Ok(body["data"].take())
     }
+}
+
+#[async_trait]
+impl GpuProvider for RunPodClient {
+    fn name(&self) -> &str {
+        "runpod"
+    }
 
     async fn list_offers(&self, criteria: SearchCriteria) -> Result<Vec<NormalizedOffer>> {
         let query = r#"
