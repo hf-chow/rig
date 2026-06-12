@@ -106,4 +106,35 @@ impl GpuProvider for RunPodClient {
         });
         Ok(offers)
     }
+
+    async fn create_instance(
+        &self,
+        offer: &NormalizedOffer,
+        spec: &InstanceSpec,
+    ) -> Result<String> {
+        let mutation = r#"{
+            "input": {
+                gpuTypeId: offer.provider_ref,
+                cloudType: "SECURE" or "COMMUNITY",
+                gpuCount: 1,
+                bidPerGpu: offer.price_per_hour,
+                imageName: spec.image,
+                containerDiskInGb: spec.disk_gb as u32,
+            }
+        }"#;
+        let variables = json!({"input": {
+            "gpuTypeId": offer.provider_ref,
+            "cloudType": "COMMUNITY",
+            "gpuCount": 1,
+            "bidPerGpu": offer.price_per_hour,
+            "imageName": spec.image,
+            "containerDiskInGb": spec.disk_gb as i64,
+            "ports": "22/tcp",
+        }});
+        let data = self.graphql(mutation, variables).await?;
+        let id = data["podRentInterruptable"]["id"]
+            .as_str()
+            .ok_or_else(|| anyhow!("no pod id in response"))?;
+        Ok(id.to_string())
+    }
 }
