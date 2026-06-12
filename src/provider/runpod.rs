@@ -137,4 +137,41 @@ impl GpuProvider for RunPodClient {
             .ok_or_else(|| anyhow!("no pod id in response"))?;
         Ok(id.to_string())
     }
+
+    async fn get_instance(&self, id: &str) -> Result<Option<NormalizedInstance>> {
+        let query = r#"
+            query ($id: String!) {
+                pod(input: { podId: $id }) {
+                    id desiredStatus costPerHr
+                    runtime { ports { ip publicPort privatePort } }
+                }
+            }"#;
+        let data = self.graphql(query, json!({ "id": id })).await?;
+        let pod = &data["pod"];
+        if pod.is_null() {
+            return Ok(None);
+        }
+        let status = match (pod["desiredStatus"].as_str(), pod["runtime"].is_null()) {
+            (Some("RUNNING"), false) => InstanceStatus::Running,
+            (Some("RUNNING"), true) => InstanceStatus::Pending,
+            (Some("EXITED" | "TERMINATED" | "DEAD"), _) => InstanceStatus::Stopped,
+            (Some(other), _) => InstanceStatus::Unknown(other.to_string()),
+            (None, _) => InstanceStatus::Unknown("none".to_string()),
+        };
+        let ssh = pod["runtime"]["ports"]
+            .as_array()
+            .and_then(|ports| ports.iter().find(|p| p["privatePort"] == 22));
+        let ssh_host = ssh.and_then(|p| p["ip"].as_str().map(str::to_string));
+        let ssh_port = ssh.and_then(|p| p["publicPort"].as_u64().map(|n| n as u16));
+        Ok(Some(NormalizedInstance {
+            id: id.to_string(),
+            provider: "runpod".to_string(),
+            gpu_name: None,
+            price_per_hour: pod["costPerHr"].as_f64().unwrap_or(0.0),
+            status,
+            public_ip: ssh_host.clone(),
+            ssh_host,
+            ssh_port,
+        }))
+    }
 }
