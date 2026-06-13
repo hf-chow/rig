@@ -63,7 +63,7 @@ impl GpuProvider for RunPodClient {
         "runpod"
     }
 
-    async fn list_offers(&self, criteria: SearchCriteria) -> Result<Vec<NormalizedOffer>> {
+    async fn list_offers(&self, criteria: &SearchCriteria) -> Result<Vec<NormalizedOffer>> {
         let query = r#"
         query{
             gpuTypes {
@@ -173,5 +173,15 @@ impl GpuProvider for RunPodClient {
             ssh_host,
             ssh_port,
         }))
+    }
+
+    async fn destroy_instance(&self, id: &str) -> Result<()> {
+        let mutation = r#"
+            mutation ($id: String!) {
+                podTerminate(input: { podId: $id })
+            }
+        }"#;
+        self.graphql(mutation, json!( { "id": id } )).await?;
+        Ok(())
     }
 }
