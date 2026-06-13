@@ -113,13 +113,8 @@ impl GpuProvider for RunPodClient {
         spec: &InstanceSpec,
     ) -> Result<String> {
         let mutation = r#"{
-            "input": {
-                gpuTypeId: offer.provider_ref,
-                cloudType: "SECURE" or "COMMUNITY",
-                gpuCount: 1,
-                bidPerGpu: offer.price_per_hour,
-                imageName: spec.image,
-                containerDiskInGb: spec.disk_gb as u32,
+            mutation ($input: PodRentInterruptableInput!) {
+                podRentInterruptable(input: $input) {id}
             }
         }"#;
         let variables = json!({"input": {
