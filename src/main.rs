@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
 
 use crate::{
-    config::{Config, RunPodConfig},
+    config::Config,
     provider::{GpuProvider, runpod::RunPodClient, vast::VastClient},
 };
 
@@ -28,16 +28,15 @@ enum Provider {
 #[derive(Parser)]
 pub struct Cli {
     #[arg(long, value_enum, default_value_t = Provider::Vastai)]
-    pub provider: Provider,
+    provider: Provider,
     #[command(subcommand)]
-    pub command: Command,
+    command: Command,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     let config = Config::load()?;
-    let vast_cfg = config.providers.vastai.clone().unwrap_or_default();
     let client: Box<dyn GpuProvider> = match cli.provider {
         Provider::Vastai => {
             let cfg = config.providers.vastai.clone().unwrap_or_default();
