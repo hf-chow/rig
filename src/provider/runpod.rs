@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::json;
 
-struct RunPodClient {
+pub struct RunPodClient {
     api_key: String,
     client: reqwest::Client,
 }
@@ -112,7 +112,7 @@ impl GpuProvider for RunPodClient {
         offer: &NormalizedOffer,
         spec: &InstanceSpec,
     ) -> Result<String> {
-        let mutation = r#"
+        let mutation = r#"{
             mutation ($input: PodRentInterruptableInput!) {
                 podRentInterruptable(input: $input) {id}
         }"#;

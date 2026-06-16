@@ -15,12 +15,18 @@ pub struct Config {
 #[derive(Deserialize, Serialize, Default)]
 pub struct Providers {
     pub vastai: Option<VastConfig>,
+    pub runpod: Option<RunPodConfig>,
 }
 
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct VastConfig {
     pub api_key: Option<String>,
     pub ssh_key_id: Option<Vec<u64>>,
+}
+
+#[derive(Clone, Default, Deserialize, Serialize)]
+pub struct RunPodConfig {
+    pub api_key: Option<String>,
 }
 
 impl Default for Config {
@@ -35,6 +41,7 @@ impl Default for Config {
                     api_key: None,
                     ssh_key_id: None,
                 }),
+                runpod: Some(RunPodConfig { api_key: None }),
             },
         }
     }
@@ -62,6 +69,15 @@ impl VastConfig {
             return Ok(token);
         }
         self.api_key.clone().ok_or_else(|| anyhow::anyhow!("no Vast.ai API key found. Set VASTAI_API_KEY or add token to ~/.config/rig/config.toml"))
+    }
+}
+
+impl RunPodConfig {
+    pub fn resolve_token(&self) -> Result<String> {
+        if let Ok(token) = std::env::var("RUNPOD_API_KEY") {
+            return Ok(token);
+        }
+        self.api_key.clone().ok_or_else(|| anyhow::anyhow!("no RunPod API key found. Set RUNPOD_API_KEY or add token to ~/.config/rig/config.toml"))
     }
 }
 
